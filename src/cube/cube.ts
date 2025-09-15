@@ -16,8 +16,8 @@ export function buildCube() {
       for (let k = -1; k <= 1; k++) {
         const mats = materialsFor(i, j, k)
         const cubelet = new THREE.Mesh(cubeletGeometry, mats)
-        cubelet.castShadow = false
-        cubelet.receiveShadow = false
+        cubelet.castShadow = true
+        cubelet.receiveShadow = true
         cubelet.position.set(i * step, j * step, k * step)
         cubeGroup.add(cubelet)
         cubelets.push({ mesh: cubelet })
@@ -37,4 +37,3 @@ export function selectLayer(axis: Axis, index: -1 | 0 | 1) {
   }
   return selected
 }
-
