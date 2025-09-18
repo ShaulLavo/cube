@@ -22,7 +22,7 @@ function waitForIdle(): Promise<void> {
 
 async function loopOnce() {
 	if (!running) return
-    const scramble = await generateSolverScramble()
+	const scramble = await generateSolverScramble()
 	animateAlgorithm(scramble)
 	await waitForIdle()
 	if (!running) return
@@ -39,7 +39,7 @@ async function loopOnce() {
 	if (!running) return
 	timer = window.setTimeout(() => {
 		loopOnce()
-	}, 1000)
+	}, 2000)
 }
 
 export function startAutoLoop() {
@@ -49,14 +49,14 @@ export function startAutoLoop() {
 }
 
 export function stopAutoLoop() {
-  running = false
-  if (timer != null) {
-    clearTimeout(timer)
-    timer = null
-  }
-  // Do not abort the current turn to avoid breaking alignment.
-  // Just clear any queued auto turns so we stop at the end of the current turn.
-  clearQueued('auto')
+	running = false
+	if (timer != null) {
+		clearTimeout(timer)
+		timer = null
+	}
+	// Do not abort the current turn to avoid breaking alignment.
+	// Just clear any queued auto turns so we stop at the end of the current turn.
+	clearQueued('auto')
 }
 
 export function isAutoLoopRunning() {

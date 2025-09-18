@@ -1,9 +1,10 @@
 #app {
-	height: 100vh;
 	background: transparent;
+	display: inline-block;
 }
-html, body {
-	background: transparent;
+html,
+body {
+	background: #222;
 }
 body {
 	margin: 0;
@@ -12,51 +13,54 @@ body {
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 }
-
+canvas {
+	background: transparent;
+}
 .keymap-overlay {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 10;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  color: #f3f5f7;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  font-size: 12px;
-  line-height: 1.35;
-  pointer-events: none; /* don't block orbit controls */
+	position: fixed;
+	top: 12px;
+	right: 12px;
+	z-index: 10;
+	padding: 10px 12px;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.45);
+	color: #f3f5f7;
+	backdrop-filter: blur(6px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	font-size: 12px;
+	line-height: 1.35;
+	pointer-events: none; /* don't block orbit controls */
 }
 
 .cam-overlay {
-  position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 10;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.45);
-  color: #e9edf1;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  font-size: 12px;
-  line-height: 1.35;
-  pointer-events: none;
+	position: fixed;
+	left: 12px;
+	bottom: 12px;
+	z-index: 10;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: rgba(0, 0, 0, 0.45);
+	color: #e9edf1;
+	backdrop-filter: blur(6px);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	font-size: 12px;
+	line-height: 1.35;
+	pointer-events: none;
 }
 .keymap-overlay code {
-  background: rgba(255,255,255,0.12);
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  color: #e8eef5;
+	background: rgba(255, 255, 255, 0.12);
+	padding: 1px 4px;
+	border-radius: 4px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+		'Liberation Mono', 'Courier New', monospace;
+	color: #e8eef5;
 }
 .keymap-title {
-  font-weight: 600;
-  margin-bottom: 6px;
-  letter-spacing: 0.02em;
+	font-weight: 600;
+	margin-bottom: 6px;
+	letter-spacing: 0.02em;
 }
 .keymap-hint {
-  opacity: 0.85;
-  margin-top: 4px;
+	opacity: 0.85;
+	margin-top: 4px;
 }

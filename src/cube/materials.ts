@@ -21,7 +21,7 @@ function glossySticker(color: number) {
 		transparent: true,
 		side: THREE.FrontSide
 	})
-	m.envMapIntensity = 0.8
+	m.envMapIntensity = 1.6
 	return m
 }
 

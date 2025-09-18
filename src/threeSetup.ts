@@ -1,92 +1,199 @@
 import * as THREE from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
+import { cubeGroup } from './cube/cube'
+import { setHovered, addSpinImpulse } from './cube/float'
 
-export const container = document.querySelector('#app') as HTMLDivElement
+export let scene: THREE.Scene
+export let camera: THREE.PerspectiveCamera
+export let renderer: THREE.WebGLRenderer
+export let controls: any
+export let composer: any | null = null
+export let bloomPass: any | null = null
+export let bloomEffect: any | null = null
+export let fxaaEffect: any | null = null
 
-export const scene = new THREE.Scene()
-// Transparent canvas background (keep environment for reflections)
-scene.background = null
-
-const fov = 40
-const aspect = container.clientWidth / container.clientHeight
-const near = 0.1
-const far = 100
-export const camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-camera.position.set(10, -6, -11)
-
-export const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-renderer.setSize(container.clientWidth, container.clientHeight)
-renderer.setPixelRatio(window.devicePixelRatio)
-renderer.outputColorSpace = THREE.SRGBColorSpace
-renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 0.8
-renderer.setClearColor(0x000000, 0)
-renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
-container.append(renderer.domElement)
-
-const pmrem = new THREE.PMREMGenerator(renderer)
-
+let initialized = false
+let pmrem: THREE.PMREMGenerator | null = null
 let envRT: THREE.WebGLRenderTarget | null = null
-scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 
-async function setEnvFromEXR(url: string) {
+type InitOpts = {
+	canvas?: HTMLCanvasElement
+	width?: number
+	height?: number
+	enableBloom?: boolean
+	enableEnv?: boolean
+}
+export async function initThree(opts: InitOpts = {}) {
+	if (initialized) return
+	const { canvas, width, height, enableBloom = false, enableEnv = false } = opts
+
+	scene = new THREE.Scene()
+	scene.background = null
+
+	const fov = 40
+	const near = 0.1
+	const far = 100
+	camera = new THREE.PerspectiveCamera(fov, 1, near, far)
+	camera.position.set(10, -6, -11)
+
+	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas })
+	const w = width ?? (canvas ? canvas.clientWidth || canvas.width : 360)
+	const h = height ?? (canvas ? canvas.clientHeight || canvas.height : 360)
+	renderer.setSize(w || 360, h || 360)
+	camera.aspect = (w || 360) / (h || 360)
+	camera.updateProjectionMatrix()
+    // Quality-first: use native device pixel ratio
+    renderer.setPixelRatio(window.devicePixelRatio || 1)
+	renderer.outputColorSpace = THREE.SRGBColorSpace
+	renderer.toneMapping = THREE.ACESFilmicToneMapping
+	renderer.toneMappingExposure = 0.8
+	renderer.setClearColor(0x000000, 0)
+	renderer.setClearAlpha(0)
+	const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+	scene.add(ambientLight)
+	// PMREM and environment are optional and loaded lazily
+	pmrem = new THREE.PMREMGenerator(renderer)
+
+	// Lazily import OrbitControls to keep initial chunk small
+	// Note: dynamic import split chunk; awaited immediately for functionality
+	// but avoids bundling controls into the main module eagerly
+	const { OrbitControls: OC } = await import(
+		'three/examples/jsm/controls/OrbitControls.js'
+	)
+	controls = new OC(camera, renderer.domElement)
+	controls.enableDamping = true
+	controls.dampingFactor = 0.05
+	controls.enablePan = false
+	controls.enableZoom = false
+	controls.minDistance = 6
+	controls.maxDistance = 20
+	controls.target.set(0, 0, 0)
+	controls.update()
+	controls.saveState()
+
+	// Hover detection via raycasting
+	const raycaster = new THREE.Raycaster()
+	const pointer = new THREE.Vector2()
+	let prevNX = 0
+	let hadHover = false
+	function updatePointerFromEvent(ev: PointerEvent) {
+		const rect = renderer.domElement.getBoundingClientRect()
+		pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1
+		pointer.y = -(((ev.clientY - rect.top) / rect.height) * 2 - 1)
+	}
+	function handlePointerMove(ev: PointerEvent) {
+		updatePointerFromEvent(ev)
+		raycaster.setFromCamera(pointer, camera)
+		const intersects = raycaster.intersectObjects(cubeGroup.children, true)
+		const hovering = intersects.length > 0
+		setHovered(hovering)
+		// If hovering, use horizontal pointer delta to nudge spin
+		if (hovering) {
+			const dx = pointer.x - prevNX
+			if (hadHover) addSpinImpulse(dx)
+			hadHover = true
+		} else {
+			hadHover = false
+		}
+		prevNX = pointer.x
+	}
+	function handlePointerLeave() {
+		setHovered(false)
+	}
+	renderer.domElement.addEventListener('pointermove', handlePointerMove)
+	renderer.domElement.addEventListener('pointerleave', handlePointerLeave)
+
+    // Quality-first: enable expensive features immediately if requested
+    if (enableBloom) {
+        await enableBloomPostFX()
+    }
+    if (enableEnv) {
+        await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
+    }
+	initialized = true
+}
+
+export function onResize() {
+	if (!initialized) return
+	const canvas = renderer.domElement
+	const w = canvas.clientWidth || canvas.width || 360
+	const h = canvas.clientHeight || canvas.height || 360
+	camera.aspect = w / h
+	camera.updateProjectionMatrix()
+	renderer.setSize(w, h)
+	if (composer) composer.setSize(w, h)
+}
+
+export function renderScene() {
+    if (composer) composer.render()
+    else renderer.render(scene, camera)
+}
+
+// Public helpers to lazily enable expensive features
+export async function enableBloomPostFX() {
+    if (composer) return
+    const [
+        { EffectComposer: EC, RenderPass: RP, EffectPass: EP, BloomEffect: BE, FXAAEffect: FX }
+    ] = await Promise.all([import('postprocessing')])
+    composer = new EC(renderer)
+    // If WebGL2, leverage multisampling where possible for extra AA
+    try {
+        const max = (renderer as any).capabilities?.maxSamples ?? 0
+        if (max && 'multisampling' in (composer as any)) {
+            ;(composer as any).multisampling = Math.min(4, max)
+        }
+    } catch {}
+    const renderPass = new RP(scene, camera)
+    bloomEffect = new BE({
+        intensity: 0.5,
+        radius: 0.8,
+        luminanceThreshold: 0.92
+    })
+    // Add a lightweight FXAA pass for smoother edges
+    try {
+        fxaaEffect = new FX()
+        bloomPass = new EP(camera, fxaaEffect, bloomEffect)
+    } catch {
+        bloomPass = new EP(camera, bloomEffect)
+    }
+    composer.addPass(renderPass)
+    composer.addPass(bloomPass)
+}
+
+export async function loadEnvironmentEXR(url: string) {
 	try {
+		if (!pmrem) pmrem = new THREE.PMREMGenerator(renderer)
+		const { RoomEnvironment } = await import(
+			'three/examples/jsm/environments/RoomEnvironment.js'
+		)
+		// Set a lightweight default while EXR loads
+		scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+
+		const { EXRLoader } = await import(
+			'three/examples/jsm/loaders/EXRLoader.js'
+		)
 		const loader = new EXRLoader()
 		const exr = await loader.loadAsync(url)
 		if (envRT) envRT.dispose()
-		envRT = pmrem.fromEquirectangular(exr as any)
+		envRT = pmrem.fromEquirectangular(exr)
 		scene.environment = envRT.texture
 	} catch (e) {
 		console.warn('EXR env load failed:', e)
 	}
 }
-setEnvFromEXR('/Spruit Sunrise 4K.exr')
 
-export const controls = new OrbitControls(camera, renderer.domElement)
-controls.enableDamping = true
-controls.dampingFactor = 0.05
-controls.enablePan = false
-controls.minDistance = 6
-controls.maxDistance = 20
-controls.target.set(0, 0, 0)
-controls.update()
-controls.saveState()
-
-const ground = new THREE.Mesh(
-	new THREE.PlaneGeometry(100, 100),
-	new THREE.ShadowMaterial({ opacity: 0.25 })
-)
-ground.rotation.x = -Math.PI / 2
-ground.position.y = -2
-ground.receiveShadow = true
-scene.add(ground)
-
-export const composer = new EffectComposer(renderer)
-const renderPass = new RenderPass(scene, camera)
-export const bloomPass = new UnrealBloomPass(
-	new THREE.Vector2(container.clientWidth, container.clientHeight),
-	0.1,
-	0.8,
-	0.92
-)
-composer.addPass(renderPass)
-composer.addPass(bloomPass)
-
-export function onResize() {
-	const w = container.clientWidth
-	const h = container.clientHeight
-	camera.aspect = w / h
-	camera.updateProjectionMatrix()
-	renderer.setSize(w, h)
-	composer.setSize(w, h)
+// Rendering quality controls
+export function setDpr(value: number) {
+  if (!renderer) return
+  const canvas = renderer.domElement
+  renderer.setPixelRatio(value)
+  // Recompute sizes for the new DPR
+  const w = canvas.clientWidth || canvas.width || 360
+  const h = canvas.clientHeight || canvas.height || 360
+  renderer.setSize(w, h)
+  if (composer) composer.setSize(w, h)
 }
 
-export function renderScene() {
-	composer.render()
+export function setNativeDpr(maxCap: number | null = null) {
+  const native = window.devicePixelRatio || 1
+  setDpr(maxCap ? Math.min(native, maxCap) : native)
 }
