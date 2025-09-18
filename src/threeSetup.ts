@@ -41,8 +41,8 @@ export async function initThree(opts: InitOpts = {}) {
 	renderer.setSize(w || 360, h || 360)
 	camera.aspect = (w || 360) / (h || 360)
 	camera.updateProjectionMatrix()
-    // Quality-first: use native device pixel ratio
-    renderer.setPixelRatio(window.devicePixelRatio || 1)
+
+	renderer.setPixelRatio(window.devicePixelRatio || 1)
 	renderer.outputColorSpace = THREE.SRGBColorSpace
 	renderer.toneMapping = THREE.ACESFilmicToneMapping
 	renderer.toneMappingExposure = 0.8
@@ -50,12 +50,9 @@ export async function initThree(opts: InitOpts = {}) {
 	renderer.setClearAlpha(0)
 	const ambientLight = new THREE.AmbientLight(0xffffff, 1)
 	scene.add(ambientLight)
-	// PMREM and environment are optional and loaded lazily
+
 	pmrem = new THREE.PMREMGenerator(renderer)
 
-	// Lazily import OrbitControls to keep initial chunk small
-	// Note: dynamic import split chunk; awaited immediately for functionality
-	// but avoids bundling controls into the main module eagerly
 	const { OrbitControls: OC } = await import(
 		'three/examples/jsm/controls/OrbitControls.js'
 	)
@@ -70,7 +67,6 @@ export async function initThree(opts: InitOpts = {}) {
 	controls.update()
 	controls.saveState()
 
-	// Hover detection via raycasting
 	const raycaster = new THREE.Raycaster()
 	const pointer = new THREE.Vector2()
 	let prevNX = 0
@@ -86,7 +82,7 @@ export async function initThree(opts: InitOpts = {}) {
 		const intersects = raycaster.intersectObjects(cubeGroup.children, true)
 		const hovering = intersects.length > 0
 		setHovered(hovering)
-		// If hovering, use horizontal pointer delta to nudge spin
+
 		if (hovering) {
 			const dx = pointer.x - prevNX
 			if (hadHover) addSpinImpulse(dx)
@@ -102,13 +98,12 @@ export async function initThree(opts: InitOpts = {}) {
 	renderer.domElement.addEventListener('pointermove', handlePointerMove)
 	renderer.domElement.addEventListener('pointerleave', handlePointerLeave)
 
-    // Quality-first: enable expensive features immediately if requested
-    if (enableBloom) {
-        await enableBloomPostFX()
-    }
-    if (enableEnv) {
-        await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
-    }
+	if (enableBloom) {
+		await enableBloomPostFX()
+	}
+	if (enableEnv) {
+		await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
+	}
 	initialized = true
 }
 
@@ -124,39 +119,44 @@ export function onResize() {
 }
 
 export function renderScene() {
-    if (composer) composer.render()
-    else renderer.render(scene, camera)
+	if (composer) composer.render()
+	else renderer.render(scene, camera)
 }
 
-// Public helpers to lazily enable expensive features
 export async function enableBloomPostFX() {
-    if (composer) return
-    const [
-        { EffectComposer: EC, RenderPass: RP, EffectPass: EP, BloomEffect: BE, FXAAEffect: FX }
-    ] = await Promise.all([import('postprocessing')])
-    composer = new EC(renderer)
-    // If WebGL2, leverage multisampling where possible for extra AA
-    try {
-        const max = (renderer as any).capabilities?.maxSamples ?? 0
-        if (max && 'multisampling' in (composer as any)) {
-            ;(composer as any).multisampling = Math.min(4, max)
-        }
-    } catch {}
-    const renderPass = new RP(scene, camera)
-    bloomEffect = new BE({
-        intensity: 0.5,
-        radius: 0.8,
-        luminanceThreshold: 0.92
-    })
-    // Add a lightweight FXAA pass for smoother edges
-    try {
-        fxaaEffect = new FX()
-        bloomPass = new EP(camera, fxaaEffect, bloomEffect)
-    } catch {
-        bloomPass = new EP(camera, bloomEffect)
-    }
-    composer.addPass(renderPass)
-    composer.addPass(bloomPass)
+	if (composer) return
+	const [
+		{
+			EffectComposer: EC,
+			RenderPass: RP,
+			EffectPass: EP,
+			BloomEffect: BE,
+			FXAAEffect: FX
+		}
+	] = await Promise.all([import('postprocessing')])
+	composer = new EC(renderer)
+
+	try {
+		const max = (renderer as any).capabilities?.maxSamples ?? 0
+		if (max && 'multisampling' in (composer as any)) {
+			;(composer as any).multisampling = Math.min(4, max)
+		}
+	} catch {}
+	const renderPass = new RP(scene, camera)
+	bloomEffect = new BE({
+		intensity: 0.5,
+		radius: 0.8,
+		luminanceThreshold: 0.92
+	})
+
+	try {
+		fxaaEffect = new FX()
+		bloomPass = new EP(camera, fxaaEffect, bloomEffect)
+	} catch {
+		bloomPass = new EP(camera, bloomEffect)
+	}
+	composer.addPass(renderPass)
+	composer.addPass(bloomPass)
 }
 
 export async function loadEnvironmentEXR(url: string) {
@@ -165,7 +165,7 @@ export async function loadEnvironmentEXR(url: string) {
 		const { RoomEnvironment } = await import(
 			'three/examples/jsm/environments/RoomEnvironment.js'
 		)
-		// Set a lightweight default while EXR loads
+
 		scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 
 		const { EXRLoader } = await import(
@@ -181,19 +181,18 @@ export async function loadEnvironmentEXR(url: string) {
 	}
 }
 
-// Rendering quality controls
 export function setDpr(value: number) {
-  if (!renderer) return
-  const canvas = renderer.domElement
-  renderer.setPixelRatio(value)
-  // Recompute sizes for the new DPR
-  const w = canvas.clientWidth || canvas.width || 360
-  const h = canvas.clientHeight || canvas.height || 360
-  renderer.setSize(w, h)
-  if (composer) composer.setSize(w, h)
+	if (!renderer) return
+	const canvas = renderer.domElement
+	renderer.setPixelRatio(value)
+
+	const w = canvas.clientWidth || canvas.width || 360
+	const h = canvas.clientHeight || canvas.height || 360
+	renderer.setSize(w, h)
+	if (composer) composer.setSize(w, h)
 }
 
 export function setNativeDpr(maxCap: number | null = null) {
-  const native = window.devicePixelRatio || 1
-  setDpr(maxCap ? Math.min(native, maxCap) : native)
+	const native = window.devicePixelRatio || 1
+	setDpr(maxCap ? Math.min(native, maxCap) : native)
 }
