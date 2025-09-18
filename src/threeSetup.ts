@@ -1,15 +1,22 @@
 import * as THREE from 'three'
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import type {
+	EffectComposer,
+	EffectPass,
+	BloomEffect,
+	FXAAEffect
+} from 'postprocessing'
 import { cubeGroup } from './cube/cube'
 import { setHovered, addSpinImpulse } from './cube/float'
 
 export let scene: THREE.Scene
 export let camera: THREE.PerspectiveCamera
 export let renderer: THREE.WebGLRenderer
-export let controls: any
-export let composer: any | null = null
-export let bloomPass: any | null = null
-export let bloomEffect: any | null = null
-export let fxaaEffect: any | null = null
+export let controls: OrbitControls
+export let composer: EffectComposer | null = null
+export let bloomPass: EffectPass | null = null
+export let bloomEffect: BloomEffect | null = null
+export let fxaaEffect: FXAAEffect | null = null
 
 let initialized = false
 let pmrem: THREE.PMREMGenerator | null = null
@@ -20,11 +27,10 @@ type InitOpts = {
 	width?: number
 	height?: number
 	enableBloom?: boolean
-	enableEnv?: boolean
 }
 export async function initThree(opts: InitOpts = {}) {
 	if (initialized) return
-	const { canvas, width, height, enableBloom = false, enableEnv = false } = opts
+	const { canvas, width, height, enableBloom = false } = opts
 
 	scene = new THREE.Scene()
 	scene.background = null
@@ -101,9 +107,9 @@ export async function initThree(opts: InitOpts = {}) {
 	if (enableBloom) {
 		await enableBloomPostFX()
 	}
-	if (enableEnv) {
-		await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
-	}
+
+	// Hardcoded environment map load so consumers don't need to call it
+	await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
 	initialized = true
 }
 
@@ -171,7 +177,7 @@ export async function loadEnvironmentEXR(url: string) {
 		const { EXRLoader } = await import(
 			'three/examples/jsm/loaders/EXRLoader.js'
 		)
-		const loader = new EXRLoader()
+		const loader = new EXRLoader().setDataType(THREE.FloatType)
 		const exr = await loader.loadAsync(url)
 		if (envRT) envRT.dispose()
 		envRT = pmrem.fromEquirectangular(exr)

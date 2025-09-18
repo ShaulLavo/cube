@@ -1,40 +1,63 @@
+import * as THREE from 'three'
+import { animateAlgorithm } from './cube/alg'
+import { isAutoLoopRunning, startAutoLoop, stopAutoLoop } from './cube/auto'
+import { buildCube, cubeGroup } from './cube/cube'
+import { updateFloating } from './cube/float'
 import {
-	initThree,
-	renderer,
-	scene,
+	ensureSolver,
+	generateSolverScramble,
+	solutionForCurrent
+} from './cube/model'
+import { hasPendingTurns, startNextTurn, turnFace } from './cube/turning'
+import { cubeSpin, setSpin, setZoomEnabled } from './cube/uiState'
+import {
+	bloomPass,
 	camera,
 	controls,
-	bloomPass,
 	enableBloomPostFX,
-	loadEnvironmentEXR,
+	initThree,
+	renderer,
+	renderScene,
+	scene,
 	setDpr,
 	setNativeDpr
 } from './threeSetup'
-import { buildCube, cubeGroup } from './cube/cube'
-import { animateAlgorithm } from './cube/alg'
-import { turnFace } from './cube/turning'
-import { startAutoLoop, stopAutoLoop, isAutoLoopRunning } from './cube/auto'
-import {
-	ensureSolver,
-	solutionForCurrent,
-	generateSolverScramble
-} from './cube/model'
-import { cubeSpin, setSpin, setZoomEnabled } from './cube/uiState'
-import { updateFloating } from './cube/float'
-import { hasPendingTurns, startNextTurn } from './cube/turning'
-import { renderScene } from './threeSetup'
-import * as THREE from 'three'
 
 export type SolveOptions = { animate?: boolean }
 export type ScrambleOptions = { animate?: boolean }
+export type InitOptions = {
+	canvas?: HTMLCanvasElement
+	bloom?: boolean
+	pixelRatio?: number | 'native' | { nativeMax?: number | null }
+}
 
 let initialized = false
-export async function init(canvas?: HTMLCanvasElement) {
-    if (initialized) return
-    await initThree({ canvas, enableBloom: true, enableEnv: true })
+export async function init(opts?: HTMLCanvasElement | InitOptions) {
+	if (initialized) return
+	const options: InitOptions =
+		opts && 'tagName' in (opts as any)
+			? { canvas: opts as HTMLCanvasElement }
+			: (opts as InitOptions) || {}
+
+	const { canvas, bloom = true, pixelRatio } = options
+
+	await initThree({ canvas, enableBloom: !!bloom })
 	if (!scene.children.includes(cubeGroup)) scene.add(cubeGroup)
 	buildCube()
 	ensureSolver()
+
+	if (pixelRatio !== undefined) {
+		if (pixelRatio === 'native') setNativeDpr(null)
+		else if (
+			typeof pixelRatio === 'object' &&
+			pixelRatio &&
+			'nativeMax' in pixelRatio
+		) {
+			setNativeDpr(pixelRatio.nativeMax ?? null)
+		} else if (typeof pixelRatio === 'number') {
+			setDpr(pixelRatio)
+		}
+	}
 
 	try {
 		const box = new THREE.Box3().setFromObject(cubeGroup)
@@ -66,10 +89,6 @@ export function getThree() {
 
 export async function enableBloom() {
 	await enableBloomPostFX()
-}
-
-export async function loadEnvEXR(url: string) {
-	await loadEnvironmentEXR(url)
 }
 
 export function setPixelRatio(value: number) {
@@ -127,20 +146,20 @@ export function setZoom(on: boolean) {
 export type { SpinState } from './cube/uiState'
 
 export function start() {
-    let lastT = 0
-    function loop(t = 0) {
-        const dt = lastT ? (t - lastT) / 1000 : 0
-        lastT = t
+	let lastT = 0
+	function loop(t = 0) {
+		const dt = lastT ? (t - lastT) / 1000 : 0
+		lastT = t
 
-        if (cubeSpin.enabled) {
-            cubeGroup.rotation.x += cubeSpin.speedX * dt
-            cubeGroup.rotation.y += cubeSpin.speedY * dt
-        }
-        controls.update()
-        if (hasPendingTurns()) startNextTurn()
-        updateFloating(dt)
-        renderScene()
-        requestAnimationFrame(loop)
-    }
-    requestAnimationFrame(loop)
+		if (cubeSpin.enabled) {
+			cubeGroup.rotation.x += cubeSpin.speedX * dt
+			cubeGroup.rotation.y += cubeSpin.speedY * dt
+		}
+		controls.update()
+		if (hasPendingTurns()) startNextTurn()
+		updateFloating(dt)
+		renderScene()
+		requestAnimationFrame(loop)
+	}
+	requestAnimationFrame(loop)
 }

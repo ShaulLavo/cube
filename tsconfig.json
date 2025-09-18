@@ -17,9 +17,12 @@
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
+		"strictNullChecks": true,
 		// "erasableSyntaxOnly": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedSideEffectImports": true
+
+		// this is the lowest supported standard library
 	},
 	"include": ["src", "cubejs.d.ts"]
 }
