@@ -1,21 +1,29 @@
 import * as THREE from 'three'
 import { animateAlgorithm } from './cube/alg'
 import { isAutoLoopRunning, startAutoLoop, stopAutoLoop } from './cube/auto'
-import { buildCube, cubeGroup } from './cube/cube'
-import { updateFloating } from './cube/float'
+import { buildCube, cubeGroup, disposeCube } from './cube/cube'
+import { resetFloating, updateFloating } from './cube/float'
 import {
 	ensureSolver,
 	generateSolverScramble,
+	resetCube,
 	solutionForCurrent
 } from './cube/model'
-import { hasPendingTurns, startNextTurn, turnFace } from './cube/turning'
+import {
+	cancelAllTurns,
+	hasPendingTurns,
+	startNextTurn,
+	turnFace
+} from './cube/turning'
 import { cubeSpin, setSpin, setZoomEnabled } from './cube/uiState'
 import {
 	bloomPass,
 	camera,
 	controls,
+	disposeThree,
 	enableBloomPostFX,
 	initThree,
+	onResize,
 	renderer,
 	renderScene,
 	scene,
@@ -32,6 +40,10 @@ export type InitOptions = {
 }
 
 let initialized = false
+let resizeListenerAttached = false
+let animationFrameId: number | null = null
+let loopRunning = false
+let lastT = 0
 export async function init(opts?: HTMLCanvasElement | InitOptions) {
 	if (initialized) return
 	const options: InitOptions =
@@ -145,21 +157,87 @@ export function setZoom(on: boolean) {
 
 export type { SpinState } from './cube/uiState'
 
-export function start() {
-	let lastT = 0
-	function loop(t = 0) {
-		const dt = lastT ? (t - lastT) / 1000 : 0
-		lastT = t
+function animationLoop(t: number) {
+	if (!loopRunning) return
+	const dt = lastT ? (t - lastT) / 1000 : 0
+	lastT = t
 
-		if (cubeSpin.enabled) {
-			cubeGroup.rotation.x += cubeSpin.speedX * dt
-			cubeGroup.rotation.y += cubeSpin.speedY * dt
-		}
-		controls.update()
-		if (hasPendingTurns()) startNextTurn()
-		updateFloating(dt)
-		renderScene()
-		requestAnimationFrame(loop)
+	if (cubeSpin.enabled) {
+		cubeGroup.rotation.x += cubeSpin.speedX * dt
+		cubeGroup.rotation.y += cubeSpin.speedY * dt
 	}
-	requestAnimationFrame(loop)
+	controls.update()
+	if (hasPendingTurns()) startNextTurn()
+	updateFloating(dt)
+	renderScene()
+	animationFrameId = requestAnimationFrame(animationLoop)
+}
+
+export function start() {
+	if (loopRunning) return
+	loopRunning = true
+	lastT = 0
+	renderScene()
+	animationFrameId = requestAnimationFrame(animationLoop)
+}
+
+function stopAnimationLoop() {
+	if (!loopRunning) return
+	loopRunning = false
+	if (animationFrameId != null) {
+		cancelAnimationFrame(animationFrameId)
+		animationFrameId = null
+	}
+}
+
+export async function load(canvas: HTMLCanvasElement) {
+	await init(canvas)
+	setZoom(false)
+	if (!resizeListenerAttached) {
+		window.addEventListener('resize', onResize)
+		resizeListenerAttached = true
+	}
+	start()
+	autoLoopStart()
+}
+
+export function loadLazy(canvas: HTMLCanvasElement) {
+	let triggered = false
+	const triggerLoad = () => {
+		if (triggered) return
+		triggered = true
+		void load(canvas)
+	}
+
+	if ('IntersectionObserver' in window) {
+		const io = new IntersectionObserver(entries => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					io.disconnect()
+					triggerLoad()
+					break
+				}
+			}
+		})
+		io.observe(canvas)
+	} else if ((window as any).requestIdleCallback) {
+		;(window as any).requestIdleCallback(triggerLoad)
+	} else {
+		setTimeout(triggerLoad, 0)
+	}
+}
+
+export function dispose() {
+	stopAnimationLoop()
+	autoLoopStop()
+	cancelAllTurns()
+	resetFloating()
+	resetCube()
+	disposeCube()
+	disposeThree()
+	if (resizeListenerAttached) {
+		window.removeEventListener('resize', onResize)
+		resizeListenerAttached = false
+	}
+	initialized = false
 }

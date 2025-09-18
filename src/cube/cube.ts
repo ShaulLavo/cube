@@ -37,3 +37,12 @@ export function selectLayer(axis: Axis, index: -1 | 0 | 1) {
   }
   return selected
 }
+
+export function disposeCube() {
+  cubeGroup.removeFromParent()
+  cubeGroup.clear()
+  cubeGroup.position.set(0, 0, 0)
+  cubeGroup.rotation.set(0, 0, 0)
+  cubeGroup.scale.set(1, 1, 1)
+  cubelets.length = 0
+}

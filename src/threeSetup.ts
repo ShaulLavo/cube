@@ -21,6 +21,9 @@ export let fxaaEffect: FXAAEffect | null = null
 let initialized = false
 let pmrem: THREE.PMREMGenerator | null = null
 let envRT: THREE.WebGLRenderTarget | null = null
+let pointerMoveHandler: ((ev: PointerEvent) => void) | null = null
+let pointerLeaveHandler: ((ev: PointerEvent) => void) | null = null
+let pointerTarget: HTMLCanvasElement | null = null
 
 type InitOpts = {
 	canvas?: HTMLCanvasElement
@@ -103,6 +106,9 @@ export async function initThree(opts: InitOpts = {}) {
 	}
 	renderer.domElement.addEventListener('pointermove', handlePointerMove)
 	renderer.domElement.addEventListener('pointerleave', handlePointerLeave)
+	pointerMoveHandler = handlePointerMove
+	pointerLeaveHandler = handlePointerLeave
+	pointerTarget = renderer.domElement
 
 	if (enableBloom) {
 		await enableBloomPostFX()
@@ -111,6 +117,52 @@ export async function initThree(opts: InitOpts = {}) {
 	// Hardcoded environment map load so consumers don't need to call it
 	await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
 	initialized = true
+}
+
+export function disposeThree() {
+	if (!initialized) return
+	initialized = false
+
+	if (pointerTarget && pointerMoveHandler) {
+		pointerTarget.removeEventListener('pointermove', pointerMoveHandler)
+	}
+	if (pointerTarget && pointerLeaveHandler) {
+		pointerTarget.removeEventListener('pointerleave', pointerLeaveHandler)
+	}
+	pointerMoveHandler = null
+	pointerLeaveHandler = null
+	pointerTarget = null
+
+	try {
+		controls?.dispose()
+	} catch {}
+
+	if (composer) {
+		try {
+			composer?.dispose?.()
+		} catch {}
+		composer = null
+	}
+	bloomPass = null
+	bloomEffect = null
+	fxaaEffect = null
+
+	if (pmrem) {
+		pmrem.dispose()
+		pmrem = null
+	}
+	if (envRT) {
+		envRT.dispose()
+		envRT = null
+	}
+
+	try {
+		renderer.dispose()
+		;(renderer as any).forceContextLoss?.()
+	} catch {}
+
+	scene.clear()
+	scene.environment = null
 }
 
 export function onResize() {
