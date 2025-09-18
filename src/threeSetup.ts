@@ -115,7 +115,7 @@ export async function initThree(opts: InitOpts = {}) {
 	}
 
 	// Hardcoded environment map load so consumers don't need to call it
-	await loadEnvironmentEXR('/Spruit Sunrise 4K.exr')
+	await loadEnvironmentEXR('./Spruit Sunrise 4K.exr')
 	initialized = true
 }
 
