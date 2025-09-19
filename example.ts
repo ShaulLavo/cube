@@ -1,3 +1,5 @@
+import { dispose, load } from './src'
+
 const size = Math.min(window.innerWidth, window.innerHeight) * 0.66
 const app = document.querySelector('#app') as HTMLDivElement
 
@@ -21,10 +23,9 @@ Object.assign(canvas.style, {
 })
 app.appendChild(canvas)
 document.body.style.margin = '0'
-document.body.style.background = 'transparent'
+document.body.style.background = 'black'
 
 canvas.style.pointerEvents = 'auto'
-
-void import('./src').then(({ loadLazy }) => {
-	loadLazy(canvas)
-})
+load({ canvas, bloom: false })
+// dispose()
+// load({ canvas })

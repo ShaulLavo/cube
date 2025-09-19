@@ -34,7 +34,7 @@ import {
 export type SolveOptions = { animate?: boolean }
 export type ScrambleOptions = { animate?: boolean }
 export type InitOptions = {
-	canvas?: HTMLCanvasElement
+	canvas: HTMLCanvasElement
 	bloom?: boolean
 	pixelRatio?: number | 'native' | { nativeMax?: number | null }
 }
@@ -44,11 +44,11 @@ let resizeListenerAttached = false
 let animationFrameId: number | null = null
 let loopRunning = false
 let lastT = 0
-export async function init(opts?: HTMLCanvasElement | InitOptions) {
+export async function init(opts?: InitOptions) {
 	if (initialized) return
 	const options: InitOptions =
 		opts && 'tagName' in (opts as any)
-			? { canvas: opts as HTMLCanvasElement }
+			? { canvas: opts.canvas }
 			: (opts as InitOptions) || {}
 
 	const { canvas, bloom = true, pixelRatio } = options
@@ -190,8 +190,8 @@ function stopAnimationLoop() {
 	}
 }
 
-export async function load(canvas: HTMLCanvasElement) {
-	await init(canvas)
+export async function load(opts: InitOptions) {
+	await init(opts)
 	setZoom(false)
 	if (!resizeListenerAttached) {
 		window.addEventListener('resize', onResize)
@@ -201,12 +201,12 @@ export async function load(canvas: HTMLCanvasElement) {
 	autoLoopStart()
 }
 
-export function loadLazy(canvas: HTMLCanvasElement) {
+export function loadLazy(opts: InitOptions) {
 	let triggered = false
 	const triggerLoad = () => {
 		if (triggered) return
 		triggered = true
-		void load(canvas)
+		void load(opts)
 	}
 
 	if ('IntersectionObserver' in window) {
@@ -219,7 +219,7 @@ export function loadLazy(canvas: HTMLCanvasElement) {
 				}
 			}
 		})
-		io.observe(canvas)
+		io.observe(opts.canvas)
 	} else if ((window as any).requestIdleCallback) {
 		;(window as any).requestIdleCallback(triggerLoad)
 	} else {
