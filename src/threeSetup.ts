@@ -25,6 +25,11 @@ let pointerMoveHandler: ((ev: PointerEvent) => void) | null = null
 let pointerLeaveHandler: ((ev: PointerEvent) => void) | null = null
 let pointerTarget: HTMLCanvasElement | null = null
 
+const DEFAULT_ENVIRONMENT_EXR_URL = new URL(
+	'./Spruit Sunrise 4K.exr',
+	import.meta.url
+).href
+
 type InitOpts = {
 	canvas?: HTMLCanvasElement
 	width?: number
@@ -115,7 +120,7 @@ export async function initThree(opts: InitOpts = {}) {
 	}
 
 	// Hardcoded environment map load so consumers don't need to call it
-	await loadEnvironmentEXR('./Spruit Sunrise 4K.exr')
+	await loadEnvironmentEXR(DEFAULT_ENVIRONMENT_EXR_URL)
 	initialized = true
 }
 

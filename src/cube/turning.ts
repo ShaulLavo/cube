@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { animate, JSAnimation, createSpring } from 'animejs'
+import { animate, spring } from 'motion'
 import { step } from './constants'
 import type { Axis } from './cube'
 import { cubeGroup, selectLayer } from './cube'
@@ -26,7 +26,7 @@ type ActiveTurn = {
 	profile: 'manual' | 'auto'
 	face: 'U' | 'D' | 'L' | 'R' | 'F' | 'B'
 	ccw: boolean
-	anim?: JSAnimation
+	anim?: ReturnType<typeof animate>
 }
 
 let nextTurnId = 1
@@ -59,9 +59,7 @@ export function cancelAllTurns() {
 
 	for (const t of activeTurns) {
 		if (t.anim) {
-			try {
-				t.anim.cancel()
-			} catch {}
+			t.anim.stop()
 		}
 	}
 
@@ -109,43 +107,37 @@ export function startNextTurn() {
 		activeTurns.push(turn)
 
 		const axis = next.axis
-		const state = { angle: 0 }
-
-		const onUpdate = () => {
+		const applyRotation = (angle: number) => {
 			switch (axis) {
 				case 'x':
-					group.rotation.x = state.angle
+					group.rotation.x = angle
 					break
 				case 'y':
-					group.rotation.y = state.angle
+					group.rotation.y = angle
 					break
 				case 'z':
-					group.rotation.z = state.angle
+					group.rotation.z = angle
 					break
 			}
-			turn.rotated = state.angle
+			turn.rotated = angle
 		}
 		const onComplete = () => {
 			const stillActive = activeTurns.find(t => t.id === id)
 			if (stillActive) finishTurn(id)
 		}
 		const isManual = next.profile === 'manual'
-		const anim = animate(state, {
-			angle: {
-				from: 0,
-				to: next.angle,
-				ease: isManual
-					? createSpring({ mass: 0.1, stiffness: 220, damping: 6, velocity: 0 })
-					: createSpring({
-							mass: 0.5,
-							stiffness: 220,
-							damping: 11,
-							velocity: 0
-					  })
+		const anim = animate(0, next.angle, {
+			type: spring,
+			mass: isManual ? 0.1 : 0.5,
+			stiffness: 220,
+			damping: isManual ? 6 : 11,
+			velocity: 0,
+			onUpdate: (angle: number) => {
+				applyRotation(angle)
 			},
-			onUpdate,
 			onComplete
 		})
+		applyRotation(0)
 		turn.anim = anim
 		return true
 	}

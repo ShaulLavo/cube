@@ -47,4 +47,4 @@ Notes
 
 - The viewer loads a default EXR environment automatically.
 - The package exports source TypeScript. Use a modern bundler (Vite/Rollup/ESBuild) so workers and TS are compiled in the consuming app.
-- Peer deps: three/postprocessing/cubejs/comlink/animejs are regular deps here; your app can rely on them transitively, or install matching versions explicitly if you prefer a single copy.
+- Peer deps: three/postprocessing/cubejs/comlink/gsap are regular deps here; your app can rely on them transitively, or install matching versions explicitly if you prefer a single copy.
