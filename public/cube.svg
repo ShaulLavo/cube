@@ -1,0 +1,7 @@
+<svg width="60" height="60" viewBox="0 0 50 50">
+    <rect x="15" y="15" width="20" height="20" fill="#60A5FA" transform="rotate(45 25 25)">
+        <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25"
+            dur="2s" repeatCount="indefinite"></animateTransform>
+        <animate attributeName="opacity" values="1;0.5;1" dur="2s" repeatCount="indefinite"></animate>
+    </rect>
+</svg>
