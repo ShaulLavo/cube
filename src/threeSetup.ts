@@ -25,10 +25,9 @@ let pointerMoveHandler: ((ev: PointerEvent) => void) | null = null
 let pointerLeaveHandler: ((ev: PointerEvent) => void) | null = null
 let pointerTarget: HTMLCanvasElement | null = null
 
-const DEFAULT_ENVIRONMENT_EXR_URL = new URL(
-	'./Spruit Sunrise 4K.exr',
-	import.meta.url
-).href
+// Use the consuming app's public path so Vite serves it
+// Avoid new URL(import.meta.url) which can resolve to @fs paths in deps
+const DEFAULT_ENVIRONMENT_EXR_URL = '/Spruit Sunrise 4K.exr'
 
 type InitOpts = {
 	canvas?: HTMLCanvasElement
@@ -52,11 +51,14 @@ export async function initThree(opts: InitOpts = {}) {
 	renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, canvas })
 	const w = width ?? (canvas ? canvas.clientWidth || canvas.width : 360)
 	const h = height ?? (canvas ? canvas.clientHeight || canvas.height : 360)
-	renderer.setSize(w || 360, h || 360)
+	renderer.setPixelRatio(window.devicePixelRatio || 1)
+	// Only update the internal drawing buffer size. Let CSS control layout.
+	// This avoids setting inline width/height that can fight responsive sizing
+	// on first load before layout has fully settled.
+	renderer.setSize(w || 360, h || 360, false)
 	camera.aspect = (w || 360) / (h || 360)
 	camera.updateProjectionMatrix()
 
-	renderer.setPixelRatio(window.devicePixelRatio || 1)
 	renderer.outputColorSpace = THREE.SRGBColorSpace
 	renderer.toneMapping = THREE.ACESFilmicToneMapping
 	renderer.toneMappingExposure = 0.8
@@ -122,6 +124,15 @@ export async function initThree(opts: InitOpts = {}) {
 	// Hardcoded environment map load so consumers don't need to call it
 	await loadEnvironmentEXR(DEFAULT_ENVIRONMENT_EXR_URL)
 	initialized = true
+
+	// Nudge a couple of resizes across frames to catch late layout
+	// (fonts, aspect changes) without relying on a window resize.
+	try {
+		requestAnimationFrame(() => {
+			onResize()
+			requestAnimationFrame(() => onResize())
+		})
+	} catch {}
 }
 
 export function disposeThree() {
@@ -177,7 +188,8 @@ export function onResize() {
 	const h = canvas.clientHeight || canvas.height || 360
 	camera.aspect = w / h
 	camera.updateProjectionMatrix()
-	renderer.setSize(w, h)
+	// Keep CSS-driven layout; only update internal buffer size.
+	renderer.setSize(w, h, false)
 	if (composer) composer.setSize(w, h)
 }
 
@@ -251,7 +263,8 @@ export function setDpr(value: number) {
 
 	const w = canvas.clientWidth || canvas.width || 360
 	const h = canvas.clientHeight || canvas.height || 360
-	renderer.setSize(w, h)
+	// Avoid overriding CSS sizing on DPR changes.
+	renderer.setSize(w, h, false)
 	if (composer) composer.setSize(w, h)
 }
 

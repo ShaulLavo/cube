@@ -1,6 +1,10 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
+  resolve: {
+    // Ensure a single Three.js instance across all imports (incl. dependencies)
+    dedupe: ['three']
+  },
   build: {
     target: 'es2019',
     cssCodeSplit: true,
@@ -21,4 +25,3 @@ export default defineConfig({
     }
   }
 })
-

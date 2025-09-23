@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import type { ColorRepresentation } from 'three'
 import { cubeSize } from './constants'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 
@@ -52,3 +53,15 @@ export const cubeletGeometry = new RoundedBoxGeometry(
 	cornerSegments,
 	cornerRadius
 )
+
+// Set every material on the cube to the same color while preserving
+// roughness/metalness/clearcoat and other effects.
+export function setCubeColor(color: ColorRepresentation) {
+	innerPlastic.color.set(color)
+	matWhite.color.set(color)
+	matYellow.color.set(color)
+	matRed.color.set(color)
+	matOrange.color.set(color)
+	matBlue.color.set(color)
+	matGreen.color.set(color)
+}
