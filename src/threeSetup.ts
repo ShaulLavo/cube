@@ -124,15 +124,6 @@ export async function initThree(opts: InitOpts = {}) {
 	// Hardcoded environment map load so consumers don't need to call it
 	await loadEnvironmentEXR(DEFAULT_ENVIRONMENT_EXR_URL)
 	initialized = true
-
-	// Nudge a couple of resizes across frames to catch late layout
-	// (fonts, aspect changes) without relying on a window resize.
-	try {
-		requestAnimationFrame(() => {
-			onResize()
-			requestAnimationFrame(() => onResize())
-		})
-	} catch {}
 }
 
 export function disposeThree() {

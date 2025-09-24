@@ -1,4 +1,4 @@
-import { dispose, load } from './src'
+import { dispose, load, setCubeColor } from './src'
 
 const loader = /* html */ `
 <svg width="60" height="60" viewBox="0 0 50 50">
@@ -39,6 +39,8 @@ document.body.style.background = 'black'
 
 canvas.style.pointerEvents = 'auto'
 load({ canvas, bloom: false }).then(() => {
+	// Demonstrate changing the cube's material color
+	setCubeColor('#60A5FA') // light blue to match the loader
 	setTimeout(() => {
 		loaderElement.remove()
 	}, 0)

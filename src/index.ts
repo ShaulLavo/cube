@@ -30,6 +30,7 @@ import {
 	setDpr,
 	setNativeDpr
 } from './threeSetup'
+export { setCubeColor } from './cube/materials'
 
 export type SolveOptions = { animate?: boolean }
 export type ScrambleOptions = { animate?: boolean }
@@ -191,13 +192,19 @@ function stopAnimationLoop() {
 }
 
 export async function load(opts: InitOptions) {
+	console.log('Loading...')
 	await init(opts)
+	console.log('Initialized')
 	setZoom(false)
+
+	console.log('zoom set to false')
 	if (!resizeListenerAttached) {
 		window.addEventListener('resize', onResize)
 		resizeListenerAttached = true
 	}
+	console.log('Starting animation loop')
 	start()
+	console.log('Starting auto loop')
 	autoLoopStart()
 }
 
